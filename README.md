@@ -7,6 +7,8 @@ class.
 The render is put inside a Qt windows.
 (PySide2.QtWidgets.QMainWindow)
 
+![Screenshot](test.png)
+
 Requirements:
 * numpy
 * vtk
