@@ -138,8 +138,8 @@ class MainWindow(QMainWindow):
 
         mol = vtk.vtkMolecule()
         
-        #cubedata = cube_parser("oxirane_TCD_S001.cube")
-        cubedata = cube_parser("g+t_p1_pw6_frq_nosym_VTCD47_U150.cube")
+        cubedata = cube_parser("oxirane_TCD_S001.cube")
+        # cubedata = cube_parser("g+t_p1_pw6_frq_nosym_VTCD47_U150.cube")
         atoms = []
         for i in range(len(cubedata['atm'])):
             atoms.append(mol.AppendAtom(cubedata['atm'][i], *cubedata['crd'][i]))
@@ -158,53 +158,42 @@ class MainWindow(QMainWindow):
         grid.GetPointData().SetActiveScalars('norm')
         bounds = grid.GetScalarRange()
         bounds2 = (0, bounds[1]/100)
-        # defining the seed points
-        seeds = vtk.vtkPointSource()
-        seeds.SetCenter(0.0, 0.0, 0.0)
-        seeds.SetNumberOfPoints(100)
-        seeds.SetRadius(5.0)
-        seeds.Update()
-        # Streamlines stuff
-        integrator=vtk.vtkRungeKutta45()
+        print(bounds)
 
-        streamline = vtk.vtkStreamTracer()
-        streamline.SetInputData(grid)
-        streamline.SetSourceConnection(seeds.GetOutputPort())
-        streamline.SetMaximumPropagation(400)
-        streamline.SetIntegrator(integrator)
-        streamline.SetInitialIntegrationStep(.2)
-        streamline.SetIntegrationDirectionToBoth()
-        streamline.SetComputeVorticity(True)
-        # Building the tubes upone the streamlines
-        streamtube = vtk.vtkTubeFilter()
-        streamtube.SetInputConnection(streamline.GetOutputPort())
-        # streamtube.SetInputArrayToProcess(3, 0, 0, vtk.vtkDataObject.FIELD_ASSOCIATION_POINTS, "norm")
-        # streamtube.SetInputArrayToProcess(grid.GetPointData().GetNormals())
-        streamtube.SetRadius(0.01)
-        streamtube.SetNumberOfSides(12)
-        # changes the radius according to the field magnitude
-        streamtube.SetVaryRadiusToVaryRadiusByScalar()
-        streamtube.CappingOn()
-        streamtube.Update()
-        # To change the colors
-        lut = vtk.vtkLookupTable()
-        lut.SetHueRange(0.6, 0.0)
-        lut.Build()
+        arrow = vtk.vtkArrowSource()
+        glyphs = vtk.vtkGlyph3D()
+        glyphs.SetInputData(grid)
+        glyphs.SetSourceConnection(arrow.GetOutputPort())
+        # glyphs.Update()
 
-        streamline_mapper = vtk.vtkPolyDataMapper()
-        streamline_mapper.SetInputConnection(streamtube.GetOutputPort())
-        # streamline_mapper.SetColorModeToMapScalars()
-        streamline_mapper.ScalarVisibilityOn()
-        # streamline_mapper.SetScalarModeToUsePointFieldData()
-        streamline_mapper.SetScalarRange(*bounds2)
-        # streamline_mapper.ColorByArrayComponent("norm", 0)
-        # streamline_mapper.SetLookupTable(ctf)
-        streamline_mapper.SetLookupTable(lut)
-        # streamline_mapper.SelectColorArray('norm') 
-        streamline_actor = vtk.vtkActor()
-        streamline_actor.SetMapper(streamline_mapper)
-        streamline_actor.GetProperty().SetOpacity(0.5)
-        streamline_actor.VisibilityOn()
+        glyph_mapper =  vtk.vtkPolyDataMapper()
+        glyph_mapper.SetInputConnection(glyphs.GetOutputPort())
+        glyph_actor = vtk.vtkActor()
+        glyph_actor.SetMapper(glyph_mapper)
+        glyph_actor.VisibilityOn()
+
+        glyphs.SetVectorModeToUseVector()
+        glyphs.SetScaleModeToScaleByScalar()
+        # #glyphs.SetScaleModeToDataScalingOff()
+        
+        # glyph_mapper.UseLookupTableScalarRangeOn()
+
+
+        # glyphs.SetScaleModeToScaleByVector()
+        glyphs.SetScaleFactor(10)
+        glyphs.SetColorModeToColorByScalar()
+
+        # s0,sf = glyphs.GetOutput().GetScalarRange()
+        # print(s0,sf)
+        lut = vtk.vtkColorTransferFunction()
+        lut.AddRGBPoint(0.001, 1,0,0)
+        lut.AddRGBPoint(0.15, 0,1,0)
+        glyph_mapper.SetLookupTable(lut)
+
+        threshold = vtk.vtkThresholdPoints()
+        threshold.SetInputData(grid)
+        threshold.ThresholdBetween(0.001,0.15)
+        glyphs.SetInputConnection(threshold.GetOutputPort())
 
         # Create a mapper
         # mapper = vtk.vtkPolyDataMapper()
@@ -219,7 +208,7 @@ class MainWindow(QMainWindow):
         #actor.SetRenderStyleToVolume()
 
         self.ren.AddActor(actor)
-        self.ren.AddActor(streamline_actor)
+        self.ren.AddActor(glyph_actor)
 
         self.ren.ResetCamera()
 
